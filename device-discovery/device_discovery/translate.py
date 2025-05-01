@@ -305,7 +305,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
     entities = []
 
     defaults = data.get("defaults", Defaults())
-    overrides = data.get("default_overrides", Defaults())
+    overrides = data.get("overrides", Defaults())
 
     device_info = data.get("device", {})
     interfaces = data.get("interface", {})

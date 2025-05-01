@@ -33,6 +33,7 @@ class DeviceParameters(ObjectParameters):
 class VlanParameters(ObjectParameters):
     """Model for VLAN parameters."""
 
+    site: str | None = Field(default=None, description="Site name, optional")
     group: str | None = Field(default=None, description="VLAN group, optional")
     tenant: str | None = Field(default=None, description="VLAN tenant, optional")
     role: str | None = Field(default=None, description="VLAN role, optional")
