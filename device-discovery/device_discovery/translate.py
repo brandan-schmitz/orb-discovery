@@ -51,11 +51,13 @@ def translate_device(device_info: dict, defaults: Defaults) -> Device:
         Device: Translated Device entity.
 
     """
+    site = defaults.site
     tags = list(defaults.tags) if defaults.tags else []
     description = None
     comments = None
 
     if defaults.device:
+        site = defaults.device.site
         tags.extend(defaults.device.tags)
         description = defaults.device.description
         comments = defaults.device.comments
@@ -71,7 +73,7 @@ def translate_device(device_info: dict, defaults: Defaults) -> Device:
         role=defaults.role,
         serial=device_info.get("serial_number"),
         status="active",
-        site=defaults.site,
+        site=site,
         tags=tags,
         description=description,
         comments=comments,
@@ -158,6 +160,7 @@ def translate_interface_ips(
     prefix_tags = list(tags)
     prefix_comments = None
     prefix_description = None
+    prefix_site = defaults.site
     prefix_role = None
     prefix_tenant = None
     prefix_vrf = None
@@ -174,6 +177,7 @@ def translate_interface_ips(
         prefix_tags.extend(defaults.prefix.tags)
         prefix_comments = defaults.prefix.comments
         prefix_description = defaults.prefix.description
+        prefix_site = defaults.prefix.site
         prefix_role = defaults.prefix.role
         prefix_tenant = defaults.prefix.tenant
         prefix_vrf = defaults.prefix.vrf
@@ -190,7 +194,7 @@ def translate_interface_ips(
                         Entity(
                             prefix=Prefix(
                                 prefix=str(network),
-                                scope_site=defaults.site,
+                                scope_site=prefix_site,
                                 vrf=prefix_vrf,
                                 role=prefix_role,
                                 tenant=prefix_tenant,
@@ -232,6 +236,7 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults) -> VLAN:
     tags = defaults.tags if defaults.tags else []
     comments = None
     description = None
+    site = None
     group = None
     tenant = None
     role = None
@@ -240,6 +245,7 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults) -> VLAN:
         tags.extend(defaults.vlan.tags)
         comments = defaults.vlan.comments
         description = defaults.vlan.description
+        site = defaults.vlan.site
         group = defaults.vlan.group
         tenant = defaults.vlan.tenant
         role = defaults.vlan.role
@@ -247,6 +253,7 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults) -> VLAN:
     vlan = VLAN(
         vid=int(vid),
         name=vlan_name,
+        site=site,
         group=group,
         tenant=tenant,
         role=role,
