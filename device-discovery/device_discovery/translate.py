@@ -37,7 +37,59 @@ def int32_overflows(number: int) -> bool:
     return not (INT32_MIN <= number <= INT32_MAX)
 
 
-def translate_device(device_info: dict, defaults: Defaults) -> Device:
+def get_param(overrides, defaults, section: str, attr: str = None):
+    """
+    Retrieve a parameter from overrides or defaults with fallback logic.
+
+    Args:
+        overrides: The overrides model instance.
+        defaults: The defaults model instance.
+        section (str): The section name (e.g., "device", "vlan", "ipaddress", "prefix", "interface", or "site").
+        attr (str, optional): The attribute to fetch within the section. If None, assumes section itself is the field.
+
+    Returns:
+        The first non-"undefined" value from overrides, then defaults, or None.
+    """
+    # Special case handling for top-level tags
+    if attr == "tags":
+        tags = (defaults.tags or [])[:]  # Start with top-level default tags
+        if section:  # If section is specified, look for section-specific tags
+            section_default = getattr(defaults, section, None)
+            section_override = getattr(overrides, section, None)
+
+            # Add section-specific default tags (device, interface, prefix, etc.)
+            if section_default and section_default.tags:
+                tags.extend(section_default.tags)
+            
+            # Override tags with the section's override value
+            if section_override and section_override.tags:
+                return list(section_override.tags)  # Full override if present
+        
+        # Return merged tags if found, otherwise None
+        return tags if tags else None
+    
+    # Handle standard non-tags attributes (device, interface, etc.)
+    section_override = getattr(overrides, section, None) if section else None
+    section_default = getattr(defaults, section, None) if section else None
+
+    if attr is None:
+        override_val = section_override
+        default_val = section_default
+    else:
+        override_val = getattr(section_override, attr, None) if section_override else None
+        default_val = getattr(section_default, attr, None) if section_default else None
+
+    # Prioritize override value, then default, and finally None
+    if override_val not in (None, "undefined"):
+        return override_val
+    if default_val not in (None, "undefined"):
+        return default_val
+    if override_val == "undefined" or default_val == "undefined":
+        return "undefined"
+    return None
+
+
+def translate_device(device_info: dict, defaults: Defaults, overrides: Defaults) -> Device:
     """
     Translate device information from NAPALM format to Diode SDK Device entity.
 
@@ -45,33 +97,34 @@ def translate_device(device_info: dict, defaults: Defaults) -> Device:
     ----
         device_info (dict): Dictionary containing device information.
         defaults (Defaults): Default configuration.
+        overrides (Defaults): Default Overrides for this device.
 
     Returns:
     -------
         Device: Translated Device entity.
 
     """
-    tags = list(defaults.tags) if defaults.tags else []
-    description = None
-    comments = None
-
-    if defaults.device:
-        tags.extend(defaults.device.tags)
-        description = defaults.device.description
-        comments = defaults.device.comments
+    device_model = get_param(overrides, defaults, "device", "device_model") or device_info.get("model")
+    role = get_param(overrides, defaults, "device", "role")
+    description = get_param(overrides, defaults, "device", "description")
+    comments = get_param(overrides, defaults, "device", "comments")
+    site = get_param(overrides, defaults, "site")
+    tags = get_param(overrides, defaults, "device", "tags")
 
     device = Device(
         name=device_info.get("hostname"),
         device_type=DeviceType(
-            model=device_info.get("model"), manufacturer=device_info.get("vendor")
+            model=device_model,
+            manufacturer=device_info.get("vendor")
         ),
         platform=Platform(
-            name=device_info.get("driver"), manufacturer=device_info.get("vendor")
+            name=device_info.get("driver"),
+            manufacturer=device_info.get("vendor")
         ),
-        role=defaults.role,
+        role=role,
         serial=device_info.get("serial_number"),
         status="active",
-        site=defaults.site,
+        site=site,
         tags=tags,
         description=description,
         comments=comments,
@@ -80,7 +133,7 @@ def translate_device(device_info: dict, defaults: Defaults) -> Device:
 
 
 def translate_interface(
-    device: Device, if_name: str, interface_info: dict, defaults: Defaults
+    device: Device, if_name: str, interface_info: dict, defaults: Defaults, overrides: Defaults
 ) -> Interface:
     """
     Translate interface information from NAPALM format to Diode SDK Interface entity.
@@ -97,8 +150,8 @@ def translate_interface(
         Interface: Translated Interface entity.
 
     """
-    tags = list(defaults.tags) if defaults.tags else []
-    description = None
+    tags = get_param(overrides, defaults, "interface", "tags")
+    description = get_param(overrides, defaults, "interface", "description")
 
     if defaults.interface:
         tags.extend(defaults.interface.tags)
@@ -130,7 +183,7 @@ def translate_interface(
 
 
 def translate_interface_ips(
-    interface: Interface, interfaces_ip: dict, defaults: Defaults
+    interface: Interface, interfaces_ip: dict, defaults: Defaults, overrides: Defaults
 ) -> Iterable[Entity]:
     """
     Translate IP address and Prefixes information for an interface.
@@ -147,38 +200,20 @@ def translate_interface_ips(
         Iterable[Entity]: Iterable of translated IP address and Prefixes entities.
 
     """
-    tags = defaults.tags if defaults.tags else []
-    ip_tags = list(tags)
-    ip_comments = None
-    ip_description = None
-    ip_role = None
-    ip_tenant = None
-    ip_vrf = None
+    ip_tags = get_param(overrides, defaults, "ipaddress", "tags")
+    ip_comments = get_param(overrides, defaults, "ipaddress", "comments")
+    ip_description = get_param(overrides, defaults, "ipaddress", "description")
+    ip_role = get_param(overrides, defaults, "ipaddress", "role")
+    ip_tenant = get_param(overrides, defaults, "ipaddress", "tenant")
+    ip_vrf = get_param(overrides, defaults, "ipaddress", "vrf")
 
-    prefix_tags = list(tags)
-    prefix_comments = None
-    prefix_description = None
-    prefix_site = None
-    prefix_role = None
-    prefix_tenant = None
-    prefix_vrf = None
-
-    if defaults.ipaddress:
-        ip_tags.extend(defaults.ipaddress.tags)
-        ip_comments = defaults.ipaddress.comments
-        ip_description = defaults.ipaddress.description
-        ip_role = defaults.ipaddress.role
-        ip_tenant = defaults.ipaddress.tenant
-        ip_vrf = defaults.ipaddress.vrf
-
-    if defaults.prefix:
-        prefix_tags.extend(defaults.prefix.tags)
-        prefix_comments = defaults.prefix.comments
-        prefix_description = defaults.prefix.description
-        prefix_site = defaults.prefix.site
-        prefix_role = defaults.prefix.role
-        prefix_tenant = defaults.prefix.tenant
-        prefix_vrf = defaults.prefix.vrf
+    prefix_tags = get_param(overrides, defaults, "prefix", "tags")
+    prefix_comments = get_param(overrides, defaults, "prefix", "comments")
+    prefix_description = get_param(overrides, defaults, "prefix", "description")
+    prefix_site = get_param(overrides, defaults, "prefix", "site")
+    prefix_role = get_param(overrides, defaults, "prefix", "role")
+    prefix_tenant = get_param(overrides, defaults, "prefix", "tenant")
+    prefix_vrf = get_param(overrides, defaults, "prefix", "vrf")
 
     ip_entities = []
 
@@ -220,7 +255,7 @@ def translate_interface_ips(
     return ip_entities
 
 
-def translate_vlan(vid: str, vlan_name: str, defaults: Defaults) -> VLAN:
+def translate_vlan(vid: str, vlan_name: str, defaults: Defaults, overrides: Defaults) -> VLAN:
     """
     Translate VLAN information for a given VLAN ID.
 
@@ -231,24 +266,18 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults) -> VLAN:
         defaults (Defaults): Default configuration.
 
     """
-    tags = defaults.tags if defaults.tags else []
-    comments = None
-    description = None
-    group = None
-    tenant = None
-    role = None
-
-    if defaults.vlan:
-        tags.extend(defaults.vlan.tags)
-        comments = defaults.vlan.comments
-        description = defaults.vlan.description
-        group = defaults.vlan.group
-        tenant = defaults.vlan.tenant
-        role = defaults.vlan.role
+    tags = get_param(overrides, defaults, "vlan", "tags")
+    comments = get_param(overrides, defaults, "vlan", "comments")
+    description = get_param(overrides, defaults, "vlan", "description")
+    site = get_param(overrides, defaults, "vlan", "site")
+    group = get_param(overrides, defaults, "vlan", "group")
+    tenant = get_param(overrides, defaults, "vlan", "tenant")
+    role = get_param(overrides, defaults, "vlan", "role")
 
     vlan = VLAN(
         vid=int(vid),
         name=vlan_name,
+        site=site,
         group=group,
         tenant=tenant,
         role=role,
@@ -276,23 +305,24 @@ def translate_data(data: dict) -> Iterable[Entity]:
     entities = []
 
     defaults = data.get("defaults", Defaults())
+    overrides = data.get("default_overrides", Defaults())
 
     device_info = data.get("device", {})
     interfaces = data.get("interface", {})
     interfaces_ip = data.get("interface_ip", {})
     if device_info:
         device_info["driver"] = data.get("driver")
-        device = translate_device(device_info, defaults)
+        device = translate_device(device_info, defaults, overrides)
         entities.append(Entity(device=device))
 
         for if_name, interface_info in interfaces.items():
-            interface = translate_interface(device, if_name, interface_info, defaults)
+            interface = translate_interface(device, if_name, interface_info, defaults, overrides)
             entities.append(Entity(interface=interface))
-            entities.extend(translate_interface_ips(interface, interfaces_ip, defaults))
+            entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
 
     if data.get("vlan"):
         for vid, vlan_info in data.get("vlan").items():
-            vlan = translate_vlan(vid, vlan_info.get("name"), defaults)
+            vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
             entities.append(Entity(vlan=vlan))
 
     return entities

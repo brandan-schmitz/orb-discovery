@@ -15,7 +15,7 @@ from napalm import get_network_driver
 from device_discovery.client import Client
 from device_discovery.discovery import discover_device_driver, supported_drivers
 from device_discovery.metrics import get_metric
-from device_discovery.policy.models import Config, Napalm, Status
+from device_discovery.policy.models import Config, Scope, Status
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +28,12 @@ class PolicyRunner:
     def __init__(self):
         """Initialize the PolicyRunner."""
         self.name = ""
-        self.scopes = dict[str, Napalm]()
+        self.scopes = dict[str, Scope]()
         self.config = None
         self.status = Status.NEW
         self.scheduler = BackgroundScheduler()
 
-    def setup(self, name: str, config: Config, scopes: list[Napalm]):
+    def setup(self, name: str, config: Config, scopes: list[Scope]):
         """
         Set up the policy runner.
 
@@ -98,7 +98,7 @@ class PolicyRunner:
         if policy_executions:
             policy_executions.add(1, {"policy": self.name})
 
-    def _discover_driver(self, scope: Napalm, sanitized_hostname: str) -> bool:
+    def _discover_driver(self, scope: Scope, sanitized_hostname: str) -> bool:
         """
         Discover the device driver if not provided.
 
@@ -126,7 +126,7 @@ class PolicyRunner:
         return True
 
     def _collect_device_data(
-        self, scope: Napalm, sanitized_hostname: str, config: Config
+        self, scope: Scope, sanitized_hostname: str, config: Config
     ):
         """
         Connect to device and collect data.
@@ -170,6 +170,7 @@ class PolicyRunner:
                 "interface": device.get_interfaces(),
                 "interface_ip": device.get_interfaces_ip(),
                 "defaults": config.defaults,
+                "overrides": scope.default_overrides
             }
             try:
                 data["vlan"] = device.get_vlans()
@@ -182,7 +183,7 @@ class PolicyRunner:
             if discovery_success:
                 discovery_success.add(1, {"policy": self.name})
 
-    def run(self, id: str, scope: Napalm, config: Config):
+    def run(self, id: str, scope: Scope, config: Config):
         """
         Run the device driver code for a single scope item.
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from apscheduler.triggers.date import DateTrigger
 
-from device_discovery.policy.models import Config, Defaults, Napalm, Status
+from device_discovery.policy.models import Config, Defaults, Scope, Status
 from device_discovery.policy.runner import PolicyRunner
 
 
@@ -27,7 +27,7 @@ def sample_config():
 def sample_scopes():
     """Fixture for a sample list of Napalm objects."""
     return [
-        Napalm(driver="ios", hostname="router1", username="admin", password="password")
+        Scope(driver="ios", hostname="router1", username="admin", password="password")
     ]
 
 
@@ -221,7 +221,7 @@ def test_metrics_during_policy_lifecycle(policy_runner, sample_config, sample_sc
 def test_metrics_during_failed_discovery(policy_runner, sample_config):
     """Test that metrics are properly updated when discovery fails."""
     # Create a scope with no driver to force discovery
-    scope = Napalm(
+    scope = Scope(
         driver=None, hostname="router1", username="admin", password="password"
     )
 
