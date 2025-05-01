@@ -33,7 +33,6 @@ class Napalm(BaseModel):
 class ObjectParameters(BaseModel):
     """Model for object parameters."""
 
-    site: str | None = Field(default=None, description="Site name, optional")
     comments: str | None = Field(default=None, description="Comments, optional")
     description: str | None = Field(default=None, description="Description, optional")
     tags: list[str] | None = Field(default=None, description="Tags, optional")
@@ -41,7 +40,6 @@ class ObjectParameters(BaseModel):
 class VlanParameters(ObjectParameters):
     """Model for VLAN parameters."""
 
-    site: str | None = Field(default=None, description="Site name, optional")
     group: str | None = Field(default=None, description="VLAN group, optional")
     tenant: str | None = Field(default=None, description="VLAN tenant, optional")
     role: str | None = Field(default=None, description="VLAN role, optional")
