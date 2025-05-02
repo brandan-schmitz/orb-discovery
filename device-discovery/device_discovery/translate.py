@@ -152,10 +152,7 @@ def translate_interface(
     """
     tags = get_param(overrides, defaults, "interface", "tags")
     description = get_param(overrides, defaults, "interface", "description")
-
-    if defaults.interface:
-        tags.extend(defaults.interface.tags)
-        description = defaults.interface.description
+    type = get_param(overrides, defaults, "interface", "type")
 
     description = interface_info.get("description", description)
     mac_address = interface_info.get("mac_address") if interface_info.get("mac_address") != "" else None
@@ -167,7 +164,7 @@ def translate_interface(
         primary_mac_address=mac_address,
         description=description,
         tags=tags,
-        type=defaults.if_type,
+        type=type,
     )
 
     # Convert napalm interface speed from Mbps to Netbox Kbps

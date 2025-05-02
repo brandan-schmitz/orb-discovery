@@ -30,6 +30,11 @@ class DeviceParameters(ObjectParameters):
     device_model: str | None = Field(default=None, description="Device Model, optional")
     role: str | None = Field(default="undefined", description="Device role, optional")
 
+class InterfaceParameters(ObjectParameters):
+    """Model for interface parameters"""
+    
+    type: str | None = Field(default="other", description="Interface type, optional")
+
 class VlanParameters(ObjectParameters):
     """Model for VLAN parameters."""
 
@@ -50,10 +55,9 @@ class Defaults(BaseModel):
     """Model for default configuration."""
 
     site: str | None = Field(default="undefined", description="Site name, optional")
-    if_type: str | None = Field(default=None, description="Interface type, optional")
     tags: list[str] | None = Field(default=None, description="Tags, optional")
     device: DeviceParameters | None = Field(default=None, description="Device parameters, optional")
-    interface: ObjectParameters | None = Field(default=None, description="Interface parameters, optional")
+    interface: InterfaceParameters | None = Field(default=None, description="Interface parameters, optional")
     ipaddress: IpamParameters | None = Field(default=None, description="IP Address parameters, optional")
     prefix: IpamParameters | None = Field(default=None, description="Prefix parameters, optional")
     vlan: VlanParameters | None = Field(default=None, description="VLAN parameters, optional")
