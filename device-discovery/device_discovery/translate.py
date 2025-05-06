@@ -361,10 +361,9 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             access_vlan = get_or_create_vlan(access_vlan_id) if access_vlan_id is not None else None
             
-            logger.info(f"Interface {if_name} on device {device.name} is in {port_mode} mode.")
-            
             if port_mode == "access":
                 matching_interface.mode = "access"
+                matching_interface.tagged_vlans.extend([""])
                 if access_vlan is not None:
                     matching_interface.untagged_vlan.CopyFrom(access_vlan)
             elif port_mode == "trunk":
