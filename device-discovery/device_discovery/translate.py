@@ -340,7 +340,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
             port_mode = interface_info.get("mode", None)
             
-            access_vlan = (next(vlan for vlan in vlans if vlan.vid == access_vlan_id), None)
+            access_vlan = next((vlan for vlan in vlans if vlan.vid == access_vlan_id), None)
             
             if port_mode == "access":
                 matching_interface.mode = "access"
