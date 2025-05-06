@@ -318,7 +318,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
         interfaces_ip = data.get("interface_ip", {})
         if device_info:
             device_info["driver"] = data.get("driver")
-            device = translate_device(device_info, defaults, overrides)
+            device: pb.Device = translate_device(device_info, defaults, overrides)
             entities.append(Entity(device=device))
 
             for if_name, interface_info in interfaces.items():
@@ -337,6 +337,19 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             for if_name, interface_info in data.get("interface_vlans").items():
                 matching_interface = next((iface for iface in entity_interfaces if iface.name == if_name), None)
+                
+                # Helper to get or create VLAN
+                def get_or_create_vlan(id: int) -> pb.VLAN:
+                    vlan = next((vlan for vlan in vlans if vlan.vid == id), None)
+                    if vlan is None:
+                        vlan = VLAN(
+                            vid=id,
+                            name=f"Unkown vlan ${vid} on device ${device.name}"
+                        )
+                        entities.append(Entity(vlan=vlan))
+                        vlans.append(vlan)  # Add to local list so it's available for future matches
+                        logger.warning(f"Created unknown VLAN {vid} for interface {if_name} on device {device.name}")
+                    return vlan
             
                 if matching_interface is None:
                     continue  # No matching interface found, skip to next
@@ -348,7 +361,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
                 port_mode = interface_info.get("mode", None)
                 
-                access_vlan = next((vlan for vlan in vlans if vlan.vid == access_vlan_id), None)
+                access_vlan = get_or_create_vlan(access_vlan_id) if access_vlan_id is not None else None
                 
                 if port_mode == "access":
                     matching_interface.mode = "access"
@@ -360,10 +373,10 @@ def translate_data(data: dict) -> Iterable[Entity]:
                     if tagged_vlan_ids == ["ALL"]:
                         matching_interface.mode = "tagged-all"
                     else:
-                        matching_interface.tagged_vlans.extend([vlan for vlan in vlans if vlan.vid in tagged_vlan_ids])
+                        matching_interface.tagged_vlans.extend([get_or_create_vlan(vid) for vid in tagged_vlan_ids])
                         
-                    if tagged_native_vlan is not None and tagged_native_vlan is True:
-                        matching_interface.untagged_vlan.CopyFrom(next(vlan for vlan in vlans if vlan.vid == native_vlan_id))
+                    if tagged_native_vlan and native_vlan_id is not None:
+                        matching_interface.untagged_vlan.CopyFrom(get_or_create_vlan(native_vlan_id))
                 
         return entities
     
