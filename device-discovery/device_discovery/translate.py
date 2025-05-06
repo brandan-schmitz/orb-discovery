@@ -15,6 +15,7 @@ from netboxlabs.diode.sdk.ingester import (
     Platform,
     Prefix,
 )
+import netboxlabs.diode.sdk.diode.v1.ingester_pb2 as pb
 
 from device_discovery.policy.models import Defaults
 
@@ -299,7 +300,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
         Iterable[Entity]: Iterable of translated entities.
 
     """
-    entities = []
+    entities: list[pb.Entity] = []
 
     defaults = data.get("defaults", Defaults())
     overrides = data.get("overrides", Defaults())
@@ -322,4 +323,38 @@ def translate_data(data: dict) -> Iterable[Entity]:
             vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
             entities.append(Entity(vlan=vlan))
 
+    if data.get("interface_vlans"):
+        vlans = [e.vlan for e in entities if e.HasField("vlan")]
+        entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
+        
+        for if_name, interface_info in data.get("interface_vlans").items():
+            matching_interface = next((iface for iface in entity_interfaces if iface.name == if_name), None)
+        
+            if matching_interface is None:
+                continue  # No matching interface found, skip to next
+            
+            # Get list of VLAN IDs this interface is tagged with
+            tagged_vlan_ids = interface_info.get("trunk_vlans", None)
+            native_vlan_id = interface_info.get("native_vlan", None)
+            access_vlan_id = interface_info.get("access_vlan", None)
+            tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
+            port_mode = interface_info.get("mode", None)
+            
+            access_vlan = (next(vlan for vlan in vlans if vlan.vid == access_vlan_id), None)
+            
+            if port_mode == "access":
+                matching_interface.mode = "access"
+                if access_vlan is not None:
+                    matching_interface.untagged_vlan = access_vlan
+            elif port_mode == "trunk":
+                matching_interface.mode = "tagged"
+                
+                if tagged_vlan_ids == ["ALL"]:
+                    matching_interface.mode = "tagged-all"
+                else:
+                    matching_interface.tagged_vlans = [vlan for vlan in vlans if vlan.vid in tagged_vlan_ids]
+                    
+                if tagged_native_vlan is not None and tagged_native_vlan is True:
+                    matching_interface.untagged_vlan = next(vlan for vlan in vlans if vlan.vid == native_vlan_id)
+            
     return entities
