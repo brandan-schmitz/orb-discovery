@@ -345,7 +345,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             if port_mode == "access":
                 matching_interface.mode = "access"
                 if access_vlan is not None:
-                    matching_interface.untagged_vlan = access_vlan
+                    matching_interface.untagged_vlan.CopyFrom(access_vlan)
             elif port_mode == "trunk":
                 matching_interface.mode = "tagged"
                 
@@ -355,6 +355,6 @@ def translate_data(data: dict) -> Iterable[Entity]:
                     matching_interface.tagged_vlans = [vlan for vlan in vlans if vlan.vid in tagged_vlan_ids]
                     
                 if tagged_native_vlan is not None and tagged_native_vlan is True:
-                    matching_interface.untagged_vlan = next(vlan for vlan in vlans if vlan.vid == native_vlan_id)
+                    matching_interface.untagged_vlan.CopyFrom(next(vlan for vlan in vlans if vlan.vid == native_vlan_id))
             
     return entities
