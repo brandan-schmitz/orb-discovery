@@ -363,7 +363,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             if port_mode == "access":
                 matching_interface.mode = "access"
-                matching_interface.tagged_vlans.extend([""])
+                del matching_interface.tagged_vlans[:]
                 if access_vlan is not None:
                     matching_interface.untagged_vlan.CopyFrom(access_vlan)
             elif port_mode == "trunk":
