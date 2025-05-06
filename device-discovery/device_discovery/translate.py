@@ -306,80 +306,72 @@ def translate_data(data: dict) -> Iterable[Entity]:
         Iterable[Entity]: Iterable of translated entities.
 
     """
-    
-    try:
-        entities: list[pb.Entity] = []
+    entities: list[pb.Entity] = []
 
-        defaults = data.get("defaults", Defaults())
-        overrides = data.get("overrides", Defaults())
+    defaults = data.get("defaults", Defaults())
+    overrides = data.get("overrides", Defaults())
 
-        device_info = data.get("device", {})
-        interfaces = data.get("interface", {})
-        interfaces_ip = data.get("interface_ip", {})
-        if device_info:
-            device_info["driver"] = data.get("driver")
-            device: pb.Device = translate_device(device_info, defaults, overrides)
-            entities.append(Entity(device=device))
+    device_info = data.get("device", {})
+    interfaces = data.get("interface", {})
+    interfaces_ip = data.get("interface_ip", {})
+    if device_info:
+        device_info["driver"] = data.get("driver")
+        device: pb.Device = translate_device(device_info, defaults, overrides)
+        entities.append(Entity(device=device))
 
-            for if_name, interface_info in interfaces.items():
-                interface = translate_interface(device, if_name, interface_info, defaults, overrides)
-                entities.append(Entity(interface=interface))
-                entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
+        for if_name, interface_info in interfaces.items():
+            interface = translate_interface(device, if_name, interface_info, defaults, overrides)
+            entities.append(Entity(interface=interface))
+            entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
 
-        if data.get("vlan"):
-            for vid, vlan_info in data.get("vlan").items():
-                vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
-                entities.append(Entity(vlan=vlan))
+    if data.get("vlan"):
+        for vid, vlan_info in data.get("vlan").items():
+            vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
+            entities.append(Entity(vlan=vlan))
 
-        if data.get("interface_vlans"):
-            vlans = [e.vlan for e in entities if e.HasField("vlan")]
-            entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
+    if data.get("interface_vlans"):
+        vlans = [e.vlan for e in entities if e.HasField("vlan")]
+        entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
+        
+        for if_name, interface_info in data.get("interface_vlans").items():
+            matching_interface = next((iface for iface in entity_interfaces if iface.name == if_name), None)
             
-            for if_name, interface_info in data.get("interface_vlans").items():
-                matching_interface = next((iface for iface in entity_interfaces if iface.name == if_name), None)
-                
-                # Helper to get or create VLAN
-                def get_or_create_vlan(id: int) -> pb.VLAN:
-                    vlan = next((vlan for vlan in vlans if vlan.vid == id), None)
-                    if vlan is None:
-                        vlan = VLAN(
-                            vid=id,
-                            name=f"Unkown vlan ${vid} on device ${device.name}"
-                        )
-                        entities.append(Entity(vlan=vlan))
-                        vlans.append(vlan)  # Add to local list so it's available for future matches
-                        logger.warning(f"Created unknown VLAN {vid} for interface {if_name} on device {device.name}")
-                    return vlan
+            # Helper to get or create VLAN
+            def get_or_create_vlan(id: int) -> pb.VLAN:
+                vlan = next((vlan for vlan in vlans if vlan.vid == id), None)
+                if vlan is None:
+                    vlan = VLAN(
+                        vid=id,
+                        name=f"Undefined vlan {id} on device {device.name}"
+                    )
+                    entities.append(Entity(vlan=vlan))
+                    vlans.append(vlan)  # Add to local list so it's available for future matches
+                    logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
+                return vlan
+        
+            if matching_interface is None:
+                continue  # No matching interface found, skip to next
             
-                if matching_interface is None:
-                    continue  # No matching interface found, skip to next
-                
-                # Get list of VLAN IDs this interface is tagged with
-                tagged_vlan_ids = interface_info.get("trunk_vlans", None)
-                native_vlan_id = interface_info.get("native_vlan", None)
-                access_vlan_id = interface_info.get("access_vlan", None)
-                tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
-                port_mode = interface_info.get("mode", None)
-                
-                access_vlan = get_or_create_vlan(access_vlan_id) if access_vlan_id is not None else None
-                
-                if port_mode == "access":
-                    matching_interface.mode = "access"
-                    if access_vlan is not None:
-                        matching_interface.untagged_vlan.CopyFrom(access_vlan)
-                elif port_mode == "trunk":
-                    matching_interface.mode = "tagged"
-                    
-                    if tagged_vlan_ids == ["ALL"]:
-                        matching_interface.mode = "tagged-all"
-                    else:
-                        matching_interface.tagged_vlans.extend([get_or_create_vlan(vid) for vid in tagged_vlan_ids])
-                        
-                    if tagged_native_vlan and native_vlan_id is not None:
-                        matching_interface.untagged_vlan.CopyFrom(get_or_create_vlan(native_vlan_id))
-                
-        return entities
-    
-    except Exception as e:
-        logger.error("An error occured in translate_data()", exc_info=True)
-        raise
+            # Get list of VLAN IDs this interface is tagged with
+            tagged_vlan_ids = interface_info.get("trunk_vlans", None)
+            native_vlan_id = interface_info.get("native_vlan", None)
+            access_vlan_id = interface_info.get("access_vlan", None)
+            tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
+            port_mode = interface_info.get("mode", None)
+            
+            access_vlan = get_or_create_vlan(access_vlan_id) if access_vlan_id is not None else None
+            
+            if port_mode == "access":
+                matching_interface.mode = "access"
+                if access_vlan is not None:
+                    matching_interface.untagged_vlan.CopyFrom(access_vlan)
+            elif port_mode == "trunk":
+                matching_interface.mode = "tagged"
+                if tagged_vlan_ids == ["ALL"]:
+                    matching_interface.mode = "tagged-all"
+                else:
+                    matching_interface.tagged_vlans.extend([get_or_create_vlan(vid) for vid in tagged_vlan_ids])
+                if tagged_native_vlan and native_vlan_id is not None:
+                    matching_interface.untagged_vlan.CopyFrom(get_or_create_vlan(native_vlan_id))
+            
+    return entities
