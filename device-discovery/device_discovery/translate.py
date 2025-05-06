@@ -352,7 +352,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 if tagged_vlan_ids == ["ALL"]:
                     matching_interface.mode = "tagged-all"
                 else:
-                    matching_interface.tagged_vlans = [vlan for vlan in vlans if vlan.vid in tagged_vlan_ids]
+                    matching_interface.tagged_vlans.extend([vlan for vlan in vlans if vlan.vid in tagged_vlan_ids])
                     
                 if tagged_native_vlan is not None and tagged_native_vlan is True:
                     matching_interface.untagged_vlan.CopyFrom(next(vlan for vlan in vlans if vlan.vid == native_vlan_id))
