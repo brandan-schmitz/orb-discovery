@@ -276,30 +276,30 @@ def translate_data(data: dict) -> Iterable[Entity]:
         Iterable[Entity]: Iterable of translated entities.
 
     """
-    entities: list[Entity] = []
+    try:
+        entities: list[Entity] = []
 
-    defaults = data.get("defaults", Defaults())
-    overrides = data.get("overrides", Defaults())
+        defaults = data.get("defaults", Defaults())
+        overrides = data.get("overrides", Defaults())
 
-    device_info = data.get("device", {})
-    interfaces = data.get("interface", {})
-    interfaces_ip = data.get("interface_ip", {})
-    if device_info:
-        device_info["driver"] = data.get("driver")
-        device: Device = translate_device(device_info, defaults, overrides)
-        entities.append(Entity(device=device))
+        device_info = data.get("device", {})
+        interfaces = data.get("interface", {})
+        interfaces_ip = data.get("interface_ip", {})
+        if device_info:
+            device_info["driver"] = data.get("driver")
+            device: Device = translate_device(device_info, defaults, overrides)
+            entities.append(Entity(device=device))
 
-        for if_name, interface_info in interfaces.items():
-            interface = translate_interface(device, if_name, interface_info, defaults, overrides)
-            entities.append(Entity(interface=interface))
-            entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
+            for if_name, interface_info in interfaces.items():
+                interface = translate_interface(device, if_name, interface_info, defaults, overrides)
+                entities.append(Entity(interface=interface))
+                entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
 
-    if data.get("vlan"):
-        for vid, vlan_info in data.get("vlan").items():
-            vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
-            entities.append(Entity(vlan=vlan))
-    
-    try:        
+        if data.get("vlan"):
+            for vid, vlan_info in data.get("vlan").items():
+                vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
+                entities.append(Entity(vlan=vlan))
+         
         if data.get("interfaces_vlans"):
             interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
             entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
