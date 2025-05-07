@@ -181,14 +181,17 @@ class PolicyRunner:
                 logger.error(
                     f"Policy {self.name}, Hostname {sanitized_hostname}: Error getting VLANs: {e}"
                 )
-            
-            # Get the custom parsers for things napalm does not natively support
-            vendor_parser = get_vendor_parser(scope.driver)
-            
-            # Attempt to get interface vlan information
-            interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
-            if interfaces_vlans is not None:
-                data["interfaces_vlans": interfaces_vlans]
+                
+            try:
+                # Get the custom parsers for things napalm does not natively support
+                vendor_parser = get_vendor_parser(scope.driver)
+                
+                # Attempt to get interface vlan information
+                interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
+                if interfaces_vlans is not None:
+                    data["interfaces_vlans": interfaces_vlans]
+            except Exception as e:
+                logger.exception("An error occured using vendor parsers")
                 
             Client().ingest(scope.hostname, data)
             discovery_success = get_metric("discovery_success")
