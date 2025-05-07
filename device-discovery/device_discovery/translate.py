@@ -16,9 +16,9 @@ from netboxlabs.diode.sdk.ingester import (
     Platform,
     Prefix,
 )
-import netboxlabs.diode.sdk.diode.v1.ingester_pb2 as pb
 
 from device_discovery.policy.models import Defaults
+from device_discovery.vendor_parsers import parser_models
 
 
 # Set up logging
@@ -157,21 +157,14 @@ def translate_interface(
         Interface: Translated Interface entity.
 
     """
-    tags = get_param(overrides, defaults, "interface", "tags")
-    description = get_param(overrides, defaults, "interface", "description")
-    type = get_param(overrides, defaults, "interface", "type")
-
-    description = interface_info.get("description", description)
-    mac_address = interface_info.get("mac_address") if interface_info.get("mac_address") != "" else None
-
     interface = Interface(
         device=device,
         name=if_name,
         enabled=interface_info.get("is_enabled"),
-        primary_mac_address=mac_address,
-        description=description,
-        tags=tags,
-        type=type,
+        primary_mac_address=interface_info.get("mac_address") if interface_info.get("mac_address") != "" else None,
+        description=interface_info.get("description", get_param(overrides, defaults, "interface", "description")),
+        tags=get_param(overrides, defaults, "interface", "tags"),
+        type=get_param(overrides, defaults, "interface", "type"),
     )
 
     # Convert napalm interface speed from Mbps to Netbox Kbps
@@ -204,21 +197,6 @@ def translate_interface_ips(
         Iterable[Entity]: Iterable of translated IP address and Prefixes entities.
 
     """
-    ip_tags = get_param(overrides, defaults, "ipaddress", "tags")
-    ip_comments = get_param(overrides, defaults, "ipaddress", "comments")
-    ip_description = get_param(overrides, defaults, "ipaddress", "description")
-    ip_role = get_param(overrides, defaults, "ipaddress", "role")
-    ip_tenant = get_param(overrides, defaults, "ipaddress", "tenant")
-    ip_vrf = get_param(overrides, defaults, "ipaddress", "vrf")
-
-    prefix_tags = get_param(overrides, defaults, "prefix", "tags")
-    prefix_comments = get_param(overrides, defaults, "prefix", "comments")
-    prefix_description = get_param(overrides, defaults, "prefix", "description")
-    prefix_site = get_param(overrides, defaults, "prefix", "site")
-    prefix_role = get_param(overrides, defaults, "prefix", "role")
-    prefix_tenant = get_param(overrides, defaults, "prefix", "tenant")
-    prefix_vrf = get_param(overrides, defaults, "prefix", "vrf")
-
     ip_entities = []
 
     for if_ip_name, ip_info in interfaces_ip.items():
@@ -231,13 +209,13 @@ def translate_interface_ips(
                         Entity(
                             prefix=Prefix(
                                 prefix=str(network),
-                                scope_site=prefix_site,
-                                vrf=prefix_vrf,
-                                role=prefix_role,
-                                tenant=prefix_tenant,
-                                tags=prefix_tags,
-                                comments=prefix_comments,
-                                description=prefix_description,
+                                scope_site=get_param(overrides, defaults, "prefix", "site"),
+                                vrf=get_param(overrides, defaults, "prefix", "vrf"),
+                                role=get_param(overrides, defaults, "prefix", "role"),
+                                tenant=get_param(overrides, defaults, "prefix", "tenant"),
+                                tags=get_param(overrides, defaults, "prefix", "tags"),
+                                comments=get_param(overrides, defaults, "prefix", "comments"),
+                                description=get_param(overrides, defaults, "prefix", "description"),
                             )
                         )
                     )
@@ -246,12 +224,12 @@ def translate_interface_ips(
                             ip_address=IPAddress(
                                 address=ip_address,
                                 assigned_object_interface=interface,
-                                role=ip_role,
-                                tenant=ip_tenant,
-                                vrf=ip_vrf,
-                                tags=ip_tags,
-                                comments=ip_comments,
-                                description=ip_description,
+                                role=get_param(overrides, defaults, "ipaddress", "role"),
+                                tenant=get_param(overrides, defaults, "ipaddress", "tenant"),
+                                vrf=get_param(overrides, defaults, "ipaddress", "vrf"),
+                                tags=get_param(overrides, defaults, "ipaddress", "tags"),
+                                comments=get_param(overrides, defaults, "ipaddress", "comments"),
+                                description=get_param(overrides, defaults, "ipaddress", "description"),
                             )
                         )
                     )
@@ -270,24 +248,16 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults, overrides: Defa
         defaults (Defaults): Default configuration.
 
     """
-    tags = get_param(overrides, defaults, "vlan", "tags")
-    comments = get_param(overrides, defaults, "vlan", "comments")
-    description = get_param(overrides, defaults, "vlan", "description")
-    site = get_param(overrides, defaults, "vlan", "site")
-    group = get_param(overrides, defaults, "vlan", "group")
-    tenant = get_param(overrides, defaults, "vlan", "tenant")
-    role = get_param(overrides, defaults, "vlan", "role")
-
     vlan = VLAN(
         vid=int(vid),
         name=vlan_name,
-        site=site,
-        group=group,
-        tenant=tenant,
-        role=role,
-        tags=tags,
-        comments=comments,
-        description=description,
+        site=get_param(overrides, defaults, "vlan", "site"),
+        group=get_param(overrides, defaults, "vlan", "group"),
+        tenant=get_param(overrides, defaults, "vlan", "tenant"),
+        role=get_param(overrides, defaults, "vlan", "role"),
+        tags=get_param(overrides, defaults, "vlan", "tags"),
+        comments=get_param(overrides, defaults, "vlan", "comments"),
+        description=get_param(overrides, defaults, "vlan", "description"),
     )
 
     return vlan
@@ -306,7 +276,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
         Iterable[Entity]: Iterable of translated entities.
 
     """
-    entities: list[pb.Entity] = []
+    entities: list[Entity] = []
 
     defaults = data.get("defaults", Defaults())
     overrides = data.get("overrides", Defaults())
@@ -316,7 +286,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
     interfaces_ip = data.get("interface_ip", {})
     if device_info:
         device_info["driver"] = data.get("driver")
-        device: pb.Device = translate_device(device_info, defaults, overrides)
+        device: Device = translate_device(device_info, defaults, overrides)
         entities.append(Entity(device=device))
 
         for if_name, interface_info in interfaces.items():
@@ -328,51 +298,44 @@ def translate_data(data: dict) -> Iterable[Entity]:
         for vid, vlan_info in data.get("vlan").items():
             vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
             entities.append(Entity(vlan=vlan))
-
-    if data.get("interface_vlans"):
-        vlans = [e.vlan for e in entities if e.HasField("vlan")]
+            
+    if data.get("interfaces_vlans"):
+        interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
+        entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
         entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
         
-        for if_name, interface_info in data.get("interface_vlans").items():
-            matching_interface = next((iface for iface in entity_interfaces if iface.name == if_name), None)
-            
-            # Helper to get or create VLAN
-            def get_or_create_vlan(id: int) -> pb.VLAN:
-                vlan = next((vlan for vlan in vlans if vlan.vid == id), None)
-                if vlan is None:
-                    vlan = VLAN(
-                        vid=id,
-                        name=f"Undefined vlan {id} on device {device.name}"
-                    )
-                    entities.append(Entity(vlan=vlan))
-                    vlans.append(vlan)  # Add to local list so it's available for future matches
-                    logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
-                return vlan
+        # Helper ot get or create a VLAN if it does not exist
+        def _get_or_create_vlan(id: int) -> VLAN:
+            vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
+            if vlan is None:
+                vlan = VLAN(
+                    vid=id,
+                    name=f"Undefined vlan {id} on device {device.name}",
+                )
+                entities.append(Entity(vlan=vlan))
+                entity_vlans.append(vlan)  # Add to local list so it's available for future matches
+                logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
+            return vlan
         
+        for interface_name, interface_vlan_info in interfaces_vlans.items():
+            # Attempt to match the interface name to an interface already created
+            # Skip this one if it does not as that should not happen and something is weird
+            matching_interface = next((iface for iface in entity_interfaces if iface.name == interface_name), None)
             if matching_interface is None:
-                continue  # No matching interface found, skip to next
+                continue
             
-            # Get list of VLAN IDs this interface is tagged with
-            tagged_vlan_ids = interface_info.get("trunk_vlans", None)
-            native_vlan_id = interface_info.get("native_vlan", None)
-            access_vlan_id = interface_info.get("access_vlan", None)
-            tagged_native_vlan = interface_info.get("tagged_native_vlan", None)
-            port_mode = interface_info.get("mode", None)
+            interface_mode = interface_vlan_info.mode
+            access_vlan_id = interface_vlan_info.access_vlan_id
+            native_vlan_id = interface_vlan_info.native_vlan_id
             
-            access_vlan = get_or_create_vlan(access_vlan_id) if access_vlan_id is not None else None
+            matching_interface.mode.CopyFrom(interface_mode)
             
-            if port_mode == "access":
-                matching_interface.mode = "access"
-                del matching_interface.tagged_vlans[:]
-                if access_vlan is not None:
-                    matching_interface.untagged_vlan.CopyFrom(access_vlan)
-            elif port_mode == "trunk":
-                matching_interface.mode = "tagged"
-                if tagged_vlan_ids == ["ALL"]:
-                    matching_interface.mode = "tagged-all"
-                else:
-                    matching_interface.tagged_vlans.extend([get_or_create_vlan(vid) for vid in tagged_vlan_ids])
-                if tagged_native_vlan and native_vlan_id is not None:
-                    matching_interface.untagged_vlan.CopyFrom(get_or_create_vlan(native_vlan_id))
+            if interface_mode == "access" and access_vlan_id is not None:
+                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
+            elif interface_mode == "tagged":
+                matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
             
+            if interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
+                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+                    
     return entities

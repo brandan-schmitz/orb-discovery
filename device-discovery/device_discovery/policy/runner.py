@@ -18,6 +18,7 @@ from device_discovery.client import Client
 from device_discovery.discovery import discover_device_driver, supported_drivers
 from device_discovery.metrics import get_metric
 from device_discovery.policy.models import Config, Scope, Status
+from device_discovery.vendor_parsers import get_vendor_parser
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -127,103 +128,6 @@ class PolicyRunner:
                 return False
         return True
 
-    def _collect_ios_interfaces_vlans(self, device: NetworkDriver):
-        """
-        Discover what vlans each interface has, and if the interface is operating in a access or trunk mode.
-        
-        Args:
-        ----
-            device: The device drive built to connect to the device
-        
-        Returns:
-        -------
-            [
-                "interface_name": {
-                    "mode": string | either access or trunk
-                    "access_vlan": int | the vlan that is set as the access vlan
-                    "trunk_vlans": [] | the list of vlans that the port is trunking. If none are defined explicitly then it is ["ALL"]
-                    "native_vlan": int | the vlan the port uses as its native vlan when in trunking mode
-                    "tagged_native_vlan": bool | if the port is configured to have a native vlan when in trunk mode
-                }
-            ]
-        """
-        # Get the output of the show interfaces switchport command on the device
-        raw_interfaces = device.cli(commands=["show interfaces switchport"])["show interfaces switchport"].strip()
-    
-        # Split the output into individual interface blocks. Each interface block starts with Name: <interface name>
-        interface_blocks = re.findall(r"^Name: .+?(?=^Name: |\Z)", raw_interfaces, re.DOTALL | re.MULTILINE)
-
-        # Iterate through the list of interface blocks and parse the information from them
-        interface_vlans_parsed = {}
-        for block in interface_blocks:
-            parsed = {}
-            
-            # Convert each line into a key/value dict pair
-            for line in block.strip().splitlines():
-                match = re.match(r"^(.+?):\s+(.*)$", line)
-                if match:
-                    key, value = match.groups()
-                    parsed[key.strip()] = value.strip()
-                    
-            # Get the name and ensure it is parsed out to the full length name
-            name = parsed.get("Name", "")
-            if name.startswith("Gi"):
-                name = name.replace("Gi", "GigabitEthernet", 1)
-            elif name.startswith("Fa"):
-                    name = name.replace("Fa", "FastEthernet", 1)
-            elif name.startswith("Te"):
-                name = name.replace("Te", "TenGigabitEthernet", 1)
-            
-            # Determine the mode the port is running in
-            mode = "unknown"
-            admin_mode = parsed.get("Administrative Mode", "").lower()
-            oper_mode = parsed.get("Operational Mode", "").lower()
-            
-            if admin_mode in ["dynamic auto", "dynamic desirable"]:
-                mode = "trunk" if oper_mode == "trunk" else "access"
-            elif admin_mode == "static access":
-                mode = "access"
-            elif admin_mode == "trunk":
-                mode = "trunk"
-            
-            # Get the access mode vlan. Ensure we are returning only the number
-            access_vlan_match = re.match(r"(\d+)", parsed.get("Access Mode VLAN", ""))
-            access_vlan = int(access_vlan_match.group(1)) if access_vlan_match else None
-            
-            # Get the trunk vlans. If the word ALL is present then simply return that. Otherwise return
-            # an expanded list of the vlans allowed to be trunked
-            trunk_vlans_raw = parsed.get("Trunking VLANs Enabled", "")
-            trunk_vlans = []
-            if trunk_vlans_raw.strip().upper() == "ALL":
-                trunk_vlans = ["ALL"]
-            else:
-                for part in trunk_vlans_raw.split(","):
-                    part = part.strip()
-                    if "-" in part:
-                        start, end = part.split("-")
-                        trunk_vlans.extend(range(int(start), int(end) + 1))
-                    elif part:
-                        trunk_vlans.append(int(part))
-            
-            # Get the native vlan
-            native_vlan_match = re.match(r"(\d+)", parsed.get("Trunking Native Mode VLAN", ""))
-            native_vlan = int(native_vlan_match.group(1)) if native_vlan_match else None
-            
-            # Get if trunk mode has a native vlan enabled
-            tagged_native = parsed.get("Administrative Native VLAN tagging", "").lower() == "enabled"
-            
-            # Add this interface's parsed information
-            interface_vlans_parsed[name] = {
-                "mode": mode,
-                "access_vlan": access_vlan,
-                "trunk_vlans": trunk_vlans,
-                "native_vlan": native_vlan,
-                "tagged_native_vlan": tagged_native
-            }
-        
-        return interface_vlans_parsed
-        
-
     def _collect_device_data(
         self, scope: Scope, sanitized_hostname: str, config: Config
     ):
@@ -277,9 +181,14 @@ class PolicyRunner:
                 logger.error(
                     f"Policy {self.name}, Hostname {sanitized_hostname}: Error getting VLANs: {e}"
                 )
-                
-            if scope.driver == "ios":
-                data["interface_vlans"] = self._collect_ios_interfaces_vlans(device)
+            
+            # Get the custom parsers for things napalm does not natively support
+            vendor_parser = get_vendor_parser(scope.driver)
+            
+            # Attempt to get interface vlan information
+            interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
+            if interfaces_vlans is not None:
+                data["interfaces_vlans": interfaces_vlans]
                 
             Client().ingest(scope.hostname, data)
             discovery_success = get_metric("discovery_success")
