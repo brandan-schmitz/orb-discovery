@@ -298,44 +298,48 @@ def translate_data(data: dict) -> Iterable[Entity]:
         for vid, vlan_info in data.get("vlan").items():
             vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
             entities.append(Entity(vlan=vlan))
+    
+    try:        
+        if data.get("interfaces_vlans"):
+            interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
+            entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
+            entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
             
-    if data.get("interfaces_vlans"):
-        interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
-        entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
-        entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
-        
-        # Helper ot get or create a VLAN if it does not exist
-        def _get_or_create_vlan(id: int) -> VLAN:
-            vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
-            if vlan is None:
-                vlan = VLAN(
-                    vid=id,
-                    name=f"Undefined vlan {id} on device {device.name}",
-                )
-                entities.append(Entity(vlan=vlan))
-                entity_vlans.append(vlan)  # Add to local list so it's available for future matches
-                logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
-            return vlan
-        
-        for interface_name, interface_vlan_info in interfaces_vlans.items():
-            # Attempt to match the interface name to an interface already created
-            # Skip this one if it does not as that should not happen and something is weird
-            matching_interface = next((iface for iface in entity_interfaces if iface.name == interface_name), None)
-            if matching_interface is None:
-                continue
+            # Helper ot get or create a VLAN if it does not exist
+            def _get_or_create_vlan(id: int) -> VLAN:
+                vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
+                if vlan is None:
+                    vlan = VLAN(
+                        vid=id,
+                        name=f"Undefined vlan {id} on device {device.name}",
+                    )
+                    entities.append(Entity(vlan=vlan))
+                    entity_vlans.append(vlan)  # Add to local list so it's available for future matches
+                    logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
+                return vlan
             
-            interface_mode = interface_vlan_info.mode
-            access_vlan_id = interface_vlan_info.access_vlan_id
-            native_vlan_id = interface_vlan_info.native_vlan_id
-            
-            matching_interface.mode.CopyFrom(interface_mode)
-            
-            if interface_mode == "access" and access_vlan_id is not None:
-                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
-            elif interface_mode == "tagged":
-                matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
-            
-            if interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
-                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+            for interface_name, interface_vlan_info in interfaces_vlans.items():
+                # Attempt to match the interface name to an interface already created
+                # Skip this one if it does not as that should not happen and something is weird
+                matching_interface = next((iface for iface in entity_interfaces if iface.name == interface_name), None)
+                if matching_interface is None:
+                    continue
+                
+                interface_mode = interface_vlan_info.mode
+                access_vlan_id = interface_vlan_info.access_vlan_id
+                native_vlan_id = interface_vlan_info.native_vlan_id
+                
+                matching_interface.mode.CopyFrom(interface_mode)
+                
+                if interface_mode == "access" and access_vlan_id is not None:
+                    matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
+                elif interface_mode == "tagged":
+                    matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
+                
+                if interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
+                    matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+    except Exception as e:
+        logger.exception("An error occured in translate_data()")
+        raise
                     
     return entities
