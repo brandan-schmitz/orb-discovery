@@ -65,7 +65,8 @@ class IOSParser(VendorParser):
             trunk_vlans: list[int | str] = []
             if trunk_vlans_raw.strip().upper() == "ALL":
                 trunk_vlans = ["ALL"]
-                mode = "tagged-all"
+                if mode == "tagged":
+                    mode = "tagged-all"
             else:
                 for part in trunk_vlans_raw.split(","):
                     part = part.strip()
