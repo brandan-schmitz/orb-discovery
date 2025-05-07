@@ -329,7 +329,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 access_vlan_id = interface_vlan_info.access_vlan_id
                 native_vlan_id = interface_vlan_info.native_vlan_id
                 
-                matching_interface.mode.CopyFrom(interface_mode)
+                matching_interface.mode = interface_mode
                 
                 if interface_mode == "access" and access_vlan_id is not None:
                     matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
