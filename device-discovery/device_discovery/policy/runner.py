@@ -189,7 +189,7 @@ class PolicyRunner:
                 # Attempt to get interface vlan information
                 interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
                 if interfaces_vlans is not None:
-                    data["interfaces_vlans": interfaces_vlans]
+                    data["interfaces_vlans"] = interfaces_vlans
             except Exception as e:
                 logger.exception("An error occured using vendor parsers")
                 
