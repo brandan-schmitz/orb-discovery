@@ -25,4 +25,4 @@ class VendorParser(object):
                 }
             ]
         """
-        raise NotImplementedError
+        raise NotImplementedError(f"collect_interfaces_vlans() not implemented for")

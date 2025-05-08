@@ -192,7 +192,7 @@ class PolicyRunner:
                     interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
                     if interfaces_vlans is not None:
                         data["interfaces_vlans"] = interfaces_vlans
-                except ImportError | LookupError as e:
+                except (ImportError, LookupError) as e:
                     vendor_parser = None
                     logger.warning(f"Unable to find VendorParser for {scope.driver} driver. Skipping additional parsing.")
                 except NotImplementedError as e:
