@@ -347,61 +347,12 @@ def translate_data(data: dict) -> Iterable[Entity]:
     # Dakota Central customization for setting a list of VLANs
     try:
         if any(entity.HasField("vlan") for entity in entities):
-            # entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
-            
-            # custom_field_object_references = []
-            # for entity_vlan in entity_vlans:
-            #     custom_field_object_references.append(CustomFieldObjectReference(
-            #         vlan=entity_vlan
-            #     ))
-            
-            # logger.info("custom_field_object_references: %s", str(custom_field_object_references))
-            
-            # custom_field_value = CustomFieldValue(
-            #     multiple_objects=custom_field_object_references
-            # )
-            
-            # logger.info("CustomFieldValue: %s", str(custom_field_value))
-                
-            # device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
-            
-            # device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
-            #     multiple_objects=[CustomFieldObjectReference(
-            #         vlan=VLAN(
-            #             vid=1,
-            #             name="default"
-            #         )
-            #     )]
-            # ))
-            
-                    
-            test_device = Entity(
-                device=Device(
-                    name="Test Device",
-                    site="Jamestown Office",
-                    status="active",
-                    device_type=DeviceType(
-                        model="WS-C3750G-24PS",
-                        manufacturer="Cisco"
-                    ),
-                    role="Switching",
-                    custom_fields={
-                        "device_global_vlans": CustomFieldValue(
-                            multiple_objects=[CustomFieldObjectReference(
-                                vlan=VLAN(
-                                    vid=1,
-                                    name="default"
-                                )
-                            )]
-                        )
-                    }
-                )
-            )
-            
-            entities.append(test_device)
-            
-            logger.info("Test Device: %s", MessageToDict(test_device))
-            
+            device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
+                multiple_objects=[
+                    CustomFieldObjectReference(vlan=e.vlan)
+                    for e in entities if e.HasField("vlan")
+                ]
+            ))
             logger.info("Official Device: %s", MessageToDict(device))
             
     except Exception as e:
