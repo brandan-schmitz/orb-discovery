@@ -347,8 +347,11 @@ def translate_data(data: dict) -> Iterable[Entity]:
         if any(entity.HasField("vlan") for entity in entities):
             entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
             
+            logger.info("It found vlans")
+            
             custom_field_object_references = []
             for entity_vlan in entity_vlans:
+                logger.info("Iterating for vlan")
                 custom_field_object_references.append(CustomFieldObjectReference(
                     vlan=entity_vlan
                 ))
@@ -356,8 +359,10 @@ def translate_data(data: dict) -> Iterable[Entity]:
             custom_field_value = CustomFieldValue(
                 multiple_objects=custom_field_object_references
             )
+            
+            custom_fields = {"device_global_glans": custom_field_value}
                 
-            device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
+            device.custom_fields.update(custom_fields)
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
