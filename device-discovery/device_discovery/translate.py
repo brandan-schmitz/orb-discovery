@@ -25,6 +25,9 @@ from device_discovery.policy.models import Defaults
 from device_discovery.vendor_parsers import parser_models
 
 
+from google.protobuf.json_format import MessageToJson
+
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -351,7 +354,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             custom_field_object_references = []
             for entity_vlan in entity_vlans:
-                logger.info("Iterating for vlan")
+                logger.info(f"Iterating for vlan: {entity_vlan.vid}")
                 custom_field_object_references.append(CustomFieldObjectReference(
                     vlan=entity_vlan
                 ))
@@ -360,9 +363,10 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 multiple_objects=custom_field_object_references
             )
             
-            custom_fields = {"device_global_glans": custom_field_value}
+            
+            logger.info("CustomFieldValue (JSON): %s", MessageToJson(CustomFieldValue))
                 
-            device.custom_fields.update(custom_fields)
+            device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
