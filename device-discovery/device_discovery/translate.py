@@ -357,10 +357,11 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 custom_field_object_references.append(object_reference)
                 logger.info("CustomFieldObjectReference: %s", str(object_reference))
             
+            logger.info("custom_field_object_references: %s", str(object_reference))
+            
             custom_field_value = CustomFieldValue(
                 multiple_objects=custom_field_object_references
             )
-            
             
             logger.info("CustomFieldValue: %s", str(custom_field_value))
                 
