@@ -343,16 +343,17 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
 
     # Dakota Central customization for setting a list of VLANs
-    if any(entity.HasField("vlan") for entity in entities):
-        object_references: list[CustomFieldObjectReference] = [
-            CustomFieldObjectReference(vlan=e.vlan)
-            for e in entities if e.HasField("vlan")
-        ]
+    try:
+        if any(entity.HasField("vlan") for entity in entities):
+            object_references: list[CustomFieldObjectReference] = [
+                CustomFieldObjectReference(vlan=e.vlan)
+                for e in entities if e.HasField("vlan")
+            ]
 
-        device.custom_fields.update({
-            "device_global_vlans": CustomFieldValue(
+            device.custom_fields["device_global_vlans"] = CustomFieldValue(
                 multiple_objects=object_references
             )
-        })
-                    
+    except:
+        logger.error("Error in custom vlan section")
+                        
     return entities
