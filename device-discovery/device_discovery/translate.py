@@ -15,7 +15,11 @@ from netboxlabs.diode.sdk.ingester import (
     IPAddress,
     Platform,
     Prefix,
+    CustomFieldValue,
+    CustomFieldObjectReference
 )
+
+from netboxlabs.diode.sdk.diode.v1 import ingester_pb2 as pb
 
 from device_discovery.policy.models import Defaults
 from device_discovery.vendor_parsers import parser_models
@@ -286,7 +290,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
     interfaces_ip = data.get("interface_ip", {})
     if device_info:
         device_info["driver"] = data.get("driver")
-        device: Device = translate_device(device_info, defaults, overrides)
+        device: pb.Device = translate_device(device_info, defaults, overrides)
         entities.append(Entity(device=device))
 
         for if_name, interface_info in interfaces.items():
@@ -337,5 +341,22 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             if interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
                 matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+
+    # Dakota Central customization for setting a list of VLANs
+    if any(entity.HasField("vlan") for entity in entities):
+        entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
+        object_references: list[CustomFieldObjectReference] = []
+        for vlan_object in entity_vlans:
+            object_references.append(CustomFieldObjectReference(
+                vlan=vlan_object
+            ))
+        
+        device.custom_fields = {
+            "device_global_vlans": CustomFieldValue(
+                multiple_objects=CustomFieldObjectReference(
+                    vlan=object_references
+                )
+            )
+        }
                     
     return entities
