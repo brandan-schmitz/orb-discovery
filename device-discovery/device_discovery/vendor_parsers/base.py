@@ -2,7 +2,6 @@ from napalm.base.base import NetworkDriver
 from device_discovery.vendor_parsers import parser_models
 
 class VendorParser(object):
-    
     def __init__(self):
         pass
 
