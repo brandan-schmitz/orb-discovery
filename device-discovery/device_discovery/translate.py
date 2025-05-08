@@ -401,6 +401,8 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             logger.info("Test Device: %s", MessageToDict(test_device))
             
+            logger.info("Official Device: %s", MessageToDict(device))
+            
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
                         
