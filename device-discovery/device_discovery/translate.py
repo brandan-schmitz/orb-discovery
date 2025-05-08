@@ -351,9 +351,11 @@ def translate_data(data: dict) -> Iterable[Entity]:
             custom_field_object_references = []
             for entity_vlan in entity_vlans:
                 logger.info(f"Iterating for vlan: {entity_vlan.vid}")
-                custom_field_object_references.append(CustomFieldObjectReference(
+                object_reference = CustomFieldObjectReference(
                     vlan=entity_vlan
-                ))
+                )
+                custom_field_object_references.append(object_reference)
+                logger.info("CustomFieldObjectReference: %s", str(object_reference))
             
             custom_field_value = CustomFieldValue(
                 multiple_objects=custom_field_object_references
@@ -362,7 +364,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             logger.info("CustomFieldValue: %s", str(custom_field_value))
                 
-            device.custom_fields["device_global_vlans"] = custom_field_value
+            device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
