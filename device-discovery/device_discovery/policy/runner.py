@@ -141,70 +141,65 @@ class PolicyRunner:
             config: Configuration data containing site information.
 
         """
-        try: 
-            np_driver = get_network_driver(scope.driver)
-            logger.info(
-                f"Policy {self.name}, Hostname {sanitized_hostname}: Getting information"
-            )
+        np_driver = get_network_driver(scope.driver)
+        logger.info(
+            f"Policy {self.name}, Hostname {sanitized_hostname}: Getting information"
+        )
 
-            # Measure device connection time
-            connection_start_time = time.perf_counter()
-            with np_driver(
-                scope.hostname,
-                scope.username,
-                scope.password,
-                scope.timeout,
-                scope.optional_args,
-            ) as device:
-                connection_duration = (time.perf_counter() - connection_start_time) * 1000
-                device_connection_latency = get_metric("device_connection_latency")
-                if device_connection_latency:
-                    device_connection_latency.record(
-                        connection_duration,
-                        {
-                            "policy": self.name,
-                            "hostname": sanitized_hostname,
-                            "driver": scope.driver,
-                        },
-                    )
-                    
-                data = {
-                    "driver": scope.driver,
-                    "device": device.get_facts(),
-                    "interface": device.get_interfaces(),
-                    "interface_ip": device.get_interfaces_ip(),
-                    "defaults": config.defaults,
-                    "overrides": scope.default_overrides
-                }
-                try:
-                    data["vlan"] = device.get_vlans()
-                except Exception as e:
-                    logger.error(
-                        f"Policy {self.name}, Hostname {sanitized_hostname}: Error getting VLANs: {e}"
-                    )
-                    
+        # Measure device connection time
+        connection_start_time = time.perf_counter()
+        with np_driver(
+            scope.hostname,
+            scope.username,
+            scope.password,
+            scope.timeout,
+            scope.optional_args,
+        ) as device:
+            connection_duration = (time.perf_counter() - connection_start_time) * 1000
+            device_connection_latency = get_metric("device_connection_latency")
+            if device_connection_latency:
+                device_connection_latency.record(
+                    connection_duration,
+                    {
+                        "policy": self.name,
+                        "hostname": sanitized_hostname,
+                        "driver": scope.driver,
+                    },
+                )
                 
+            data = {
+                "driver": scope.driver,
+                "device": device.get_facts(),
+                "interface": device.get_interfaces(),
+                "interface_ip": device.get_interfaces_ip(),
+                "defaults": config.defaults,
+                "overrides": scope.default_overrides
+            }
+            try:
+                data["vlan"] = device.get_vlans()
+            except Exception as e:
+                logger.error(
+                    f"Policy {self.name}, Hostname {sanitized_hostname}: Error getting VLANs: {e}"
+                )
+                
+            try:
                 # Get the custom parsers for things napalm does not natively support
-                try:
-                    vendor_parser = get_vendor_parser(scope.driver)
-                    
-                    # Attempt to get interface vlan information
-                    interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
-                    if interfaces_vlans is not None:
-                        data["interfaces_vlans"] = interfaces_vlans
-                except (ImportError, LookupError) as e:
-                    vendor_parser = None
-                    logger.warning(f"Unable to find VendorParser for {scope.driver} driver. Skipping additional parsing.")
-                except NotImplementedError as e:
-                    logger.warning(f"{e} {scope.driver} driver.")
-                    
-                Client().ingest(scope.hostname, data)
-                discovery_success = get_metric("discovery_success")
-                if discovery_success:
-                    discovery_success.add(1, {"policy": self.name})
-                    
-        except Exception as e:
-            logger.exception("An error occured in _collect_device_data()")
+                vendor_parser = get_vendor_parser(scope.driver)
+                
+                # Attempt to get interface vlan information
+                interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
+                if interfaces_vlans is not None:
+                    data["interfaces_vlans"] = interfaces_vlans
+            except (ImportError, LookupError) as e:
+                vendor_parser = None
+                logger.info(f" Unable to find VendorParser for {scope.driver} driver. Skipping additional parsing of {scope.hostname}")
+            except NotImplementedError as e:
+                logger.info(f" {e} {scope.driver} driver.")
+                
+            Client().ingest(scope.hostname, data)
+            discovery_success = get_metric("discovery_success")
+            if discovery_success:
+                discovery_success.add(1, {"policy": self.name})
 
     def run(self, id: str, scope: Scope, config: Config):
         """
