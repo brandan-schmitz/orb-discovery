@@ -3,8 +3,8 @@ from device_discovery.vendor_parsers import parser_models
 
 class VendorParser(object):
     
-    def __init__(self) -> None:
-        raise NotImplementedError
+    def __init__(self):
+        pass
 
     def collect_interfaces_vlans(device_driver: NetworkDriver) -> dict[str, parser_models.InterfaceVlans]:
         """
