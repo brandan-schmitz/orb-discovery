@@ -353,9 +353,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
         
         device.custom_fields = {
             "device_global_vlans": CustomFieldValue(
-                multiple_objects=CustomFieldObjectReference(
-                    vlan=object_references
-                )
+                multiple_objects=object_references
             )
         }
                     
