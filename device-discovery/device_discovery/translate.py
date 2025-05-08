@@ -350,7 +350,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 for e in entities if e.HasField("vlan")
             ]
 
-            device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(multiple_objects=object_references))
+            device.custom_fields.update({"device_global_vlans": CustomFieldValue(multiple_objects=object_references)})
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
