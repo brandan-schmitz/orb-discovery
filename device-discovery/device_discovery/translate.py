@@ -256,7 +256,7 @@ def translate_vlan(vid: str, vlan_name: str, defaults: Defaults, overrides: Defa
     """
     vlan = VLAN(
         vid=int(vid),
-        name=vlan_name,
+        name=vlan_name.strip(),
         site=get_param(overrides, defaults, "vlan", "site"),
         group=get_param(overrides, defaults, "vlan", "group"),
         tenant=get_param(overrides, defaults, "vlan", "tenant"),
@@ -347,30 +347,59 @@ def translate_data(data: dict) -> Iterable[Entity]:
     # Dakota Central customization for setting a list of VLANs
     try:
         if any(entity.HasField("vlan") for entity in entities):
-            entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
+            # entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
             
-            logger.info("It found vlans")
+            # custom_field_object_references = []
+            # for entity_vlan in entity_vlans:
+            #     custom_field_object_references.append(CustomFieldObjectReference(
+            #         vlan=entity_vlan
+            #     ))
             
-            custom_field_object_references = []
-            for entity_vlan in entity_vlans:
-                logger.info(f"Iterating for vlan: {entity_vlan.vid}")
-                object_reference = CustomFieldObjectReference(
-                    vlan=entity_vlan
+            # logger.info("custom_field_object_references: %s", str(custom_field_object_references))
+            
+            # custom_field_value = CustomFieldValue(
+            #     multiple_objects=custom_field_object_references
+            # )
+            
+            # logger.info("CustomFieldValue: %s", str(custom_field_value))
+                
+            # device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
+            
+            # device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
+            #     multiple_objects=[CustomFieldObjectReference(
+            #         vlan=VLAN(
+            #             vid=1,
+            #             name="default"
+            #         )
+            #     )]
+            # ))
+            
+                    
+            test_device = Entity(
+                device=Device(
+                    name="Test Device",
+                    site="Jamestown Offices",
+                    device_type=DeviceType(
+                        model="WS-C3750G-24PS",
+                        manufacturer="Cisco"
+                    ),
+                    role="Switching",
+                    custom_fields={
+                        "device_global_vlans": CustomFieldValue(
+                            multiple_objects=[CustomFieldObjectReference(
+                                vlan=VLAN(
+                                    vid=1,
+                                    name="default"
+                                )
+                            )]
+                        )
+                    }
                 )
-                custom_field_object_references.append(object_reference)
-                logger.info("CustomFieldObjectReference: %s", str(object_reference))
-            
-            logger.info("custom_field_object_references: %s", str(custom_field_object_references))
-            
-            custom_field_value = CustomFieldValue(
-                multiple_objects=custom_field_object_references
             )
             
-            logger.info("CustomFieldValue: %s", str(custom_field_value))
-                
-            device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
+            entities.append(test_device)
             
-            logger.info("device.custom_fields: %s", MessageToDict(device.custom_fields["device_global_vlans"]))
+            logger.info("Test Device: %s", MessageToDict(test_device))
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
