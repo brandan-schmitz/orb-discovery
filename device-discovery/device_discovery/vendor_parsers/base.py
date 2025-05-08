@@ -5,7 +5,7 @@ class VendorParser(object):
     def __init__(self):
         pass
 
-    def collect_interfaces_vlans(device_driver: NetworkDriver) -> dict[str, parser_models.InterfaceVlans]:
+    def collect_interfaces_vlans(self, device_driver: NetworkDriver) -> dict[str, parser_models.InterfaceVlans]:
         """
         Discover what vlans each interface has, and if the interface is operating in a access or trunk mode.
         

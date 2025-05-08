@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class IOSParser(VendorParser):
     
-    def collect_interfaces_vlans(device_driver: IOSDriver):
+    def collect_interfaces_vlans(self, device_driver: IOSDriver):
         try: 
             # Get the output of the show interfaces switchport command on the device
             raw_interfaces = device_driver.cli(commands=["show interfaces switchport"])["show interfaces switchport"].strip()
