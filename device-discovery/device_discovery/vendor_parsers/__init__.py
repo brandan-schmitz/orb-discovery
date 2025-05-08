@@ -19,6 +19,6 @@ def get_vendor_parser(name: str) -> Type[VendorParser]:
 
     for name, obj in inspect.getmembers(module):
         if inspect.isclass(obj) and issubclass(obj, VendorParser):
-            return obj
+            return obj()
     
     raise LookupError(f'No subclass of VendorParsers found in device_discovery.vendor_parsers.{name}')
