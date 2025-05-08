@@ -24,6 +24,9 @@ from netboxlabs.diode.sdk.diode.v1 import ingester_pb2 as pb
 from device_discovery.policy.models import Defaults
 from device_discovery.vendor_parsers import parser_models
 
+
+from google.protobuf.json_format import MessageToDict
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -365,14 +368,9 @@ def translate_data(data: dict) -> Iterable[Entity]:
             
             logger.info("CustomFieldValue: %s", str(custom_field_value))
                 
-            device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
-                multiple_objects=[CustomFieldObjectReference(
-                    vlan=VLAN(
-                        vid=1,
-                        name="default"
-                    )
-                )]
-            ))
+            device.custom_fields["device_global_vlans"].CopyFrom(custom_field_value)
+            
+            logger.info("device.custom_fields: %s", MessageToDict(device.custom_fields["device_global_vlans"]))
             
     except Exception as e:
         logger.error("Error in custom vlan section", exc_info=True)
