@@ -379,7 +379,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 device=Device(
                     name="Test Device",
                     site="Jamestown Office",
-                    status="active"
+                    status="active",
                     device_type=DeviceType(
                         model="WS-C3750G-24PS",
                         manufacturer="Cisco"
