@@ -1,12 +1,9 @@
-import re
-
 from napalm.base.base import NetworkDriver
-
 from device_discovery.vendor_parsers import parser_models
 
 class VendorParser(object):
     
-    def __init__() -> None:
+    def __init__(self) -> None:
         raise NotImplementedError
 
     def collect_interfaces_vlans(device_driver: NetworkDriver) -> dict[str, parser_models.InterfaceVlans]:

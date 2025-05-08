@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 class IOSParser(VendorParser):
     
-    def collect_interfaces_vlans(device: IOSDriver):
+    def collect_interfaces_vlans(device_driver: IOSDriver):
         try: 
             # Get the output of the show interfaces switchport command on the device
-            raw_interfaces = device.cli(commands=["show interfaces switchport"])["show interfaces switchport"].strip()
+            raw_interfaces = device_driver.cli(commands=["show interfaces switchport"])["show interfaces switchport"].strip()
         
             # Split the output into individual interface blocks. Each interface block starts with Name: <interface name>
             interface_blocks: list[str] = re.findall(r"^Name: .+?(?=^Name: |\Z)", raw_interfaces, re.DOTALL | re.MULTILINE)
@@ -53,7 +53,7 @@ class IOSParser(VendorParser):
                 elif admin_mode == "trunk":
                     mode = "tagged"
                 else:
-                    logger.warning(f"Unable to determine mode for interface {name} on {device.hostname}")
+                    logger.warning(f"Unable to determine mode for interface {name} on {device_driver.hostname}")
                     continue
                 
                 # Get the access mode vlan. Ensure we are returning only the number

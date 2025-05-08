@@ -1,6 +1,6 @@
 [project]
 name = "netboxlabs-device-discovery"
-version = "0.0.1"  # Overwritten during the build process
+version = "1.0.0+local"  # Overwritten during the build process
 description = "NetBox Labs, Device Discovery backend for Orb Agent, part of NetBox Discovery"
 readme = "README.md"
 requires-python = ">=3.10"
