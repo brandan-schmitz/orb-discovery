@@ -353,7 +353,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             device.custom_fields["device_global_vlans"] = CustomFieldValue(
                 multiple_objects=object_references
             )
-    except Exception:
-        logger.error("Error in custom vlan section")
+    except Exception as e:
+        logger.error("Error in custom vlan section", exc_info=True)
                         
     return entities
