@@ -185,13 +185,18 @@ class PolicyRunner:
                     
                 
                 # Get the custom parsers for things napalm does not natively support
-                vendor_parser = get_vendor_parser(scope.driver)
-                
-                # Attempt to get interface vlan information
-                interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
-                if interfaces_vlans is not None:
-                    data["interfaces_vlans"] = interfaces_vlans
-                
+                try:
+                    vendor_parser = get_vendor_parser(scope.driver)
+                    
+                    # Attempt to get interface vlan information
+                    interfaces_vlans = vendor_parser.collect_interfaces_vlans(device)
+                    if interfaces_vlans is not None:
+                        data["interfaces_vlans"] = interfaces_vlans
+                except ImportError | LookupError as e:
+                    vendor_parser = None
+                    logger.warning(f"Unable to find VendorParser for {scope.driver} driver. Skipping additional parsing.")
+                except NotImplementedError as e:
+                    logger.warning(f"{e} {scope.driver} driver.")
                     
                 Client().ingest(scope.hostname, data)
                 discovery_success = get_metric("discovery_success")
