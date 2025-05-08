@@ -344,17 +344,15 @@ def translate_data(data: dict) -> Iterable[Entity]:
 
     # Dakota Central customization for setting a list of VLANs
     if any(entity.HasField("vlan") for entity in entities):
-        entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
-        object_references: list[CustomFieldObjectReference] = []
-        for vlan_object in entity_vlans:
-            object_references.append(CustomFieldObjectReference(
-                vlan=vlan_object
-            ))
-        
-        device.custom_fields = {
+        object_references: list[CustomFieldObjectReference] = [
+            CustomFieldObjectReference(vlan=e.vlan)
+            for e in entities if e.HasField("vlan")
+        ]
+
+        device.custom_fields.update({
             "device_global_vlans": CustomFieldValue(
                 multiple_objects=object_references
             )
-        }
+        })
                     
     return entities
