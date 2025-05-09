@@ -17,7 +17,7 @@ class VendorParser(object):
         -------
             [
                 "interface_name": {
-                    "mode": string | either access or trunk
+                    "mode": string | either access, trunk, or voice
                     "access_vlan_id": int | the vlan that is set as the access vlan
                     "native_vlan_id": int | the vlan the port uses as its native vlan when in trunking mode
                     "tagged_vlan_ids": [] | the list of vlans that the port is trunking. If none are defined explicitly then it is ["ALL"]

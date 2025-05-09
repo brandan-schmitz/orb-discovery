@@ -34,6 +34,10 @@ class InterfaceParameters(ObjectParameters):
     """Model for interface parameters"""
     
     type: str | None = Field(default="other", description="Interface type, optional")
+    voice_as_tagged: bool | None = Field(default=True, description="""Represent voice vlans as tagged interfaces with the 
+                                         data VLAN being the native VLAN and the voice VLAN being tagged. Optional""")
+    voice_cf_enabled: bool | None = Field(default=False, description="""If voice_as_tagged is true and the interface is 
+                                           a voice interface, then set a custom field voice_vlan_enabled as true. Optional""")
 
 class VlanParameters(ObjectParameters):
     """Model for VLAN parameters."""

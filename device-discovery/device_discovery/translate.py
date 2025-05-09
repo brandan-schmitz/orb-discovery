@@ -334,28 +334,35 @@ def translate_data(data: dict) -> Iterable[Entity]:
             access_vlan_id = interface_vlan_info.access_vlan_id
             native_vlan_id = interface_vlan_info.native_vlan_id
             
-            matching_interface.mode = interface_mode
+            voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged"),
+            voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
             
-            if interface_mode == "access" and access_vlan_id is not None:
+            if interface_mode == "voice" and voice_as_tagged:
+                matching_interface.mode = "tagged"
+                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+                matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
+                if voice_cf_enabled:
+                    matching_interface.custom_fields["voice_vlan_enabled"].CopyFrom(CustomFieldValue(
+                        boolean=True
+                    ))
+            elif interface_mode == "access" or (interface_mode == "voice" and not voice_as_tagged):
+                matching_interface.mode = "access"
                 matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
             elif interface_mode == "tagged":
+                matching_interface.mode = interface_mode
                 matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
-            
-            if interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
+            elif interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
+                matching_interface.mode = interface_mode
                 matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
 
     # Dakota Central customization for setting a list of VLANs
-    try:
-        if any(entity.HasField("vlan") for entity in entities):
-            device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
-                multiple_objects=[
-                    CustomFieldObjectReference(vlan=e.vlan)
-                    for e in entities if e.HasField("vlan")
-                ]
-            ))
-            logger.info("Official Device: %s", MessageToDict(device))
-            
-    except Exception as e:
-        logger.error("Error in custom vlan section", exc_info=True)
+    # if any(entity.HasField("vlan") for entity in entities):
+    #     device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
+    #         multiple_objects=[
+    #             CustomFieldObjectReference(vlan=e.vlan)
+    #             for e in entities if e.HasField("vlan")
+    #         ]
+    #     ))
+    #     logger.info("Official Device: %s", MessageToDict(device))
                         
     return entities

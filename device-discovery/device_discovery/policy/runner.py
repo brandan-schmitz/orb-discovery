@@ -12,7 +12,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from napalm import get_network_driver
-from napalm.base.base import NetworkDriver
 
 from device_discovery.client import Client
 from device_discovery.discovery import discover_device_driver, supported_drivers
@@ -23,7 +22,6 @@ from device_discovery.vendor_parsers import get_vendor_parser
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class PolicyRunner:
     """Policy Runner class."""
