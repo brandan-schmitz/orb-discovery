@@ -387,7 +387,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                         print(f"Removed entity with interface: {entity.interface.name}")
 
             for entity in entities:
-                if entity.HasFoeld("interface"):
+                if entity.HasField("interface"):
                     print(f"Remaining entity with interface: {entity.interface.name}")
         
     except Exception as e:
