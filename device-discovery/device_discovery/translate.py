@@ -358,6 +358,9 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 elif interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
                     matching_interface.mode = interface_mode
                     matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+                
+                
+                logger.info("Matched Interface for: %s", MessageToDict(matching_interface))
 
         # Dakota Central customization for setting a list of VLANs
         # if any(entity.HasField("vlan") for entity in entities):
@@ -368,8 +371,6 @@ def translate_data(data: dict) -> Iterable[Entity]:
         #         ]
         #     ))
         #     logger.info("Official Device: %s", MessageToDict(device))
-        
-        logger.info("Entities List: %s", MessageToDict(entities))
     except Exception as e:
         logger.error("Error caught in translate_data(): ", exc_info=True)
                         
