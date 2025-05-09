@@ -377,18 +377,17 @@ def translate_data(data: dict) -> Iterable[Entity]:
         
         # Dakota Central customization for only shoing top-level interfaces in junos
         if data.get("driver") == "junos":
-            for i in range(len(entities) - 1, -1, -1):
-                entity: pb.Entity = entities[i]
-                if entity.interface:
-                    interface_name = entity.interface.name
-                    print(f"Checking interface: {interface_name}")
-                    
-                    if '.' in interface_name:
-                        entities.pop(i)
-                        print(f"Removed entity with interface: {interface_name}")
+            entity_interfaces: list[pb.Interface] = [e.interface for e in entities if e.HasField("interface")]
+            
+            for entity in entities:
+                if entity.HasField("interface"):
+                    print(f"Checking interface: {entity.interface.name}")
+                    if '.' in entity.interface.name:
+                        entities.remove(entity)
+                        print(f"Removed entity with interface: {entity.interface.name}")
 
             for entity in entities:
-                if entity.interface:
+                if entity.HasFoeld("interface"):
                     print(f"Remaining entity with interface: {entity.interface.name}")
         
     except Exception as e:
