@@ -18,7 +18,7 @@ class JunOSParser(VendorParser):
     def collect_interfaces_vlans(self, device_driver: JunOSDriver):
         interface_vlans: dict[str, parser_models.InterfaceVlans] = dict()
         
-        device: Device = device_driver.device
+        device: Device = device_driver.open()
 
         switch_style = device.facts["switch_style"]
         switch_version = float(device.facts["version"][:4])
@@ -133,5 +133,7 @@ class JunOSParser(VendorParser):
                     tagged_vlan_ids=tagged_vlans,
                     native_vlan_enabled=tagged_native_vlan
                 )
+        
+        device_driver.close()
 
         return interface_vlans
