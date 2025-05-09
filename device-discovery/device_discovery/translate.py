@@ -327,6 +327,12 @@ def translate_data(data: dict) -> Iterable[Entity]:
                     logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
                 return vlan
             
+            voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged")
+            voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
+            
+            logger.info(f"voice_as_tagged: {voice_as_tagged}")
+            logger.info(f"voice_cf_enabled: {voice_cf_enabled}")
+            
             for interface_name, interface_vlan_info in interfaces_vlans.items():
                 # Attempt to match the interface name to an interface already created
                 # Skip this one if it does not as that should not happen and something is weird
@@ -337,9 +343,6 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 interface_mode = interface_vlan_info.mode
                 access_vlan_id = interface_vlan_info.access_vlan_id
                 native_vlan_id = interface_vlan_info.native_vlan_id
-                
-                voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged") | True,
-                voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
                 
                 if interface_mode == "voice" and voice_as_tagged:
                     matching_interface.mode = "tagged"

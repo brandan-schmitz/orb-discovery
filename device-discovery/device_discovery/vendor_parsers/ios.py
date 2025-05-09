@@ -46,6 +46,8 @@ class IOSParser(VendorParser):
                 oper_mode = parsed.get("Operational Mode", "").lower()
                 voice_vlan = parsed.get("Voice VLAN", "").lower()
                 
+                logger.info(f"Interface {name} Voice Vlan: {voice_vlan}")
+                
                 if admin_mode in ["dynamic auto", "dynamic desirable"]:
                     mode = "tagged" if oper_mode == "trunk" else "access"
                 elif admin_mode == "static access":
