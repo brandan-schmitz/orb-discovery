@@ -4,6 +4,7 @@
 
 import logging
 import ipaddress
+import json
 from collections.abc import Iterable
 
 from netboxlabs.diode.sdk.ingester import (
@@ -310,6 +311,8 @@ def translate_data(data: dict) -> Iterable[Entity]:
         entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
         entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
         
+        logger.info("Interfaces VLANs: %s", json.dumps({k: v.model_dump() for k, v in interfaces_vlans.items()}, indent=2))
+        
         # Helper ot get or create a VLAN if it does not exist
         def _get_or_create_vlan(id: int) -> VLAN:
             vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
@@ -364,5 +367,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
     #         ]
     #     ))
     #     logger.info("Official Device: %s", MessageToDict(device))
+    
+    logger.info("Entities List: %s", MessageToDict(entities))
                         
     return entities
