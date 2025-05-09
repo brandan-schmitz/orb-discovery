@@ -380,6 +380,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             for i in range(len(entities) - 1, -1, -1):
                 entity: pb.Entity = entities[i]
                 interface_name = entity.interface.name
+                logger.info(f"Interface Name: {interface_name}")
                 
                 if '.' in interface_name:
                     entities.pop(i)
