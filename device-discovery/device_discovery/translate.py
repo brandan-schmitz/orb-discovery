@@ -338,7 +338,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
                 access_vlan_id = interface_vlan_info.access_vlan_id
                 native_vlan_id = interface_vlan_info.native_vlan_id
                 
-                voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged"),
+                voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged") | True,
                 voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
                 
                 if interface_mode == "voice" and voice_as_tagged:
