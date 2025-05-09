@@ -379,12 +379,16 @@ def translate_data(data: dict) -> Iterable[Entity]:
         if data.get("driver") == "junos":
             entity_interfaces: list[pb.Interface] = [e.interface for e in entities if e.HasField("interface")]
             
+            entities_to_remove: list[Entity] = []
             for entity in entities:
                 if entity.HasField("interface"):
                     print(f"Checking interface: {entity.interface.name}")
                     if '.' in entity.interface.name:
-                        entities.remove(entity)
-                        print(f"Removed entity with interface: {entity.interface.name}")
+                        entities_to_remove.append(entity)
+                        print(f"Queing entity with interface: {entity.interface.name} for removal")
+            
+            for entity in entities_to_remove:
+                entities.remove(entity)
 
             for entity in entities:
                 if entity.HasField("interface"):
