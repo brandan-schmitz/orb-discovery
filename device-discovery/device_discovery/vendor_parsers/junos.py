@@ -74,7 +74,7 @@ class JunOSParser(VendorParser):
                         native_vlan_enabled=tagged_native_vlan
                     )
 
-            elif switch_style == "VLAN_L2NG" or switch_style == "BRIDGE_DOMAIN":
+            elif switch_style == "VLAN_L2NG":
                 if switch_version < 20.4:
                     table = junos_views.junos_iface_vlan_table_switch_l2ng_sub20_4(
                         device_driver.device
