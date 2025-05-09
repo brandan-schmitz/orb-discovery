@@ -52,10 +52,10 @@ class IOSParser(VendorParser):
                     mode = "tagged" if oper_mode == "trunk" else "access"
                 elif admin_mode == "static access":
                     mode = "access"
+                    if voice_vlan is not "none":
+                        mode = "voice"
                 elif admin_mode == "trunk":
                     mode = "tagged"
-                elif voice_vlan is not "none":
-                    mode = "voice"
                 else:
                     logger.warning(f"Unable to determine mode for interface {name} on {device_driver.hostname}")
                     continue
