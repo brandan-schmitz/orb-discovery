@@ -312,22 +312,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
             entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
             entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
             
-            def deep_model_dump(obj):
-                if isinstance(obj, dict):
-                    return {k: deep_model_dump(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [deep_model_dump(i) for i in obj]
-                elif hasattr(obj, 'dict'):
-                    return deep_model_dump(obj.dict())
-                elif hasattr(obj, 'model_dump'):
-                    return deep_model_dump(obj.model_dump())
-                else:
-                    return obj
-            
-            logger.info(
-                "Interfaces VLANs:\n%s",
-                json.dumps(deep_model_dump(interfaces_vlans), indent=2)
-            )
+            logger.info("Interfaces VLANs: %s", json.dumps({k: v.model_dump() for k, v in interfaces_vlans.items()}, indent=2))
             
             # Helper ot get or create a VLAN if it does not exist
             def _get_or_create_vlan(id: int) -> VLAN:
@@ -385,7 +370,7 @@ def translate_data(data: dict) -> Iterable[Entity]:
         #     logger.info("Official Device: %s", MessageToDict(device))
         
         logger.info("Entities List: %s", MessageToDict(entities))
-    except Exception:
-        logger.error("Error caught in translate_data(): ")
+    except Exception as e:
+        logger.error("Error caught in translate_data(): ", exc_info=True)
                         
     return entities
