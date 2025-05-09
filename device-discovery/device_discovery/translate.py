@@ -283,91 +283,109 @@ def translate_data(data: dict) -> Iterable[Entity]:
         Iterable[Entity]: Iterable of translated entities.
 
     """
-    entities: list[Entity] = []
+    try:
+        entities: list[Entity] = []
 
-    defaults = data.get("defaults", Defaults())
-    overrides = data.get("overrides", Defaults())
+        defaults = data.get("defaults", Defaults())
+        overrides = data.get("overrides", Defaults())
 
-    device_info = data.get("device", {})
-    interfaces = data.get("interface", {})
-    interfaces_ip = data.get("interface_ip", {})
-    if device_info:
-        device_info["driver"] = data.get("driver")
-        device: pb.Device = translate_device(device_info, defaults, overrides)
-        entities.append(Entity(device=device))
+        device_info = data.get("device", {})
+        interfaces = data.get("interface", {})
+        interfaces_ip = data.get("interface_ip", {})
+        if device_info:
+            device_info["driver"] = data.get("driver")
+            device: pb.Device = translate_device(device_info, defaults, overrides)
+            entities.append(Entity(device=device))
 
-        for if_name, interface_info in interfaces.items():
-            interface = translate_interface(device, if_name, interface_info, defaults, overrides)
-            entities.append(Entity(interface=interface))
-            entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
+            for if_name, interface_info in interfaces.items():
+                interface = translate_interface(device, if_name, interface_info, defaults, overrides)
+                entities.append(Entity(interface=interface))
+                entities.extend(translate_interface_ips(interface, interfaces_ip, defaults, overrides))
 
-    if data.get("vlan"):
-        for vid, vlan_info in data.get("vlan").items():
-            vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
-            entities.append(Entity(vlan=vlan))
-        
-    if data.get("interfaces_vlans"):
-        interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
-        entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
-        entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
-        
-        logger.info("Interfaces VLANs: %s", json.dumps({k: v.model_dump() for k, v in interfaces_vlans.items()}, indent=2))
-        
-        # Helper ot get or create a VLAN if it does not exist
-        def _get_or_create_vlan(id: int) -> VLAN:
-            vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
-            if vlan is None:
-                vlan = VLAN(
-                    vid=id,
-                    name=f"Undefined vlan {id} on device {device.name}",
-                )
+        if data.get("vlan"):
+            for vid, vlan_info in data.get("vlan").items():
+                vlan = translate_vlan(vid, vlan_info.get("name"), defaults, overrides)
                 entities.append(Entity(vlan=vlan))
-                entity_vlans.append(vlan)  # Add to local list so it's available for future matches
-                logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
-            return vlan
-        
-        for interface_name, interface_vlan_info in interfaces_vlans.items():
-            # Attempt to match the interface name to an interface already created
-            # Skip this one if it does not as that should not happen and something is weird
-            matching_interface = next((iface for iface in entity_interfaces if iface.name == interface_name), None)
-            if matching_interface is None:
-                continue
             
-            interface_mode = interface_vlan_info.mode
-            access_vlan_id = interface_vlan_info.access_vlan_id
-            native_vlan_id = interface_vlan_info.native_vlan_id
+        if data.get("interfaces_vlans"):
+            interfaces_vlans: dict[str, parser_models.InterfaceVlans] = data.get("interfaces_vlans")
+            entity_vlans = [e.vlan for e in entities if e.HasField("vlan")]
+            entity_interfaces = [e.interface for e in entities if e.HasField("interface")]
             
-            voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged"),
-            voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
+            def deep_model_dump(obj):
+                if isinstance(obj, dict):
+                    return {k: deep_model_dump(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [deep_model_dump(i) for i in obj]
+                elif hasattr(obj, 'dict'):
+                    return deep_model_dump(obj.dict())
+                elif hasattr(obj, 'model_dump'):
+                    return deep_model_dump(obj.model_dump())
+                else:
+                    return obj
             
-            if interface_mode == "voice" and voice_as_tagged:
-                matching_interface.mode = "tagged"
-                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
-                matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
-                if voice_cf_enabled:
-                    matching_interface.custom_fields["voice_vlan_enabled"].CopyFrom(CustomFieldValue(
-                        boolean=True
-                    ))
-            elif interface_mode == "access" or (interface_mode == "voice" and not voice_as_tagged):
-                matching_interface.mode = "access"
-                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
-            elif interface_mode == "tagged":
-                matching_interface.mode = interface_mode
-                matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
-            elif interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
-                matching_interface.mode = interface_mode
-                matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+            logger.info(
+                "Interfaces VLANs:\n%s",
+                json.dumps(deep_model_dump(interfaces_vlans), indent=2)
+            )
+            
+            # Helper ot get or create a VLAN if it does not exist
+            def _get_or_create_vlan(id: int) -> VLAN:
+                vlan = next((vlan for vlan in entity_vlans if vlan.vid == id), None)
+                if vlan is None:
+                    vlan = VLAN(
+                        vid=id,
+                        name=f"Undefined vlan {id} on device {device.name}",
+                    )
+                    entities.append(Entity(vlan=vlan))
+                    entity_vlans.append(vlan)  # Add to local list so it's available for future matches
+                    logger.warning(f"Undefined VLAN {id} for interface {if_name} on device {device.name}")
+                return vlan
+            
+            for interface_name, interface_vlan_info in interfaces_vlans.items():
+                # Attempt to match the interface name to an interface already created
+                # Skip this one if it does not as that should not happen and something is weird
+                matching_interface = next((iface for iface in entity_interfaces if iface.name == interface_name), None)
+                if matching_interface is None:
+                    continue
+                
+                interface_mode = interface_vlan_info.mode
+                access_vlan_id = interface_vlan_info.access_vlan_id
+                native_vlan_id = interface_vlan_info.native_vlan_id
+                
+                voice_as_tagged = get_param(overrides, defaults, "interface", "voice_as_tagged"),
+                voice_cf_enabled = get_param(overrides, defaults, "interface", "voice_cf_enabled")
+                
+                if interface_mode == "voice" and voice_as_tagged:
+                    matching_interface.mode = "tagged"
+                    matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
+                    matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
+                    if voice_cf_enabled:
+                        matching_interface.custom_fields["voice_vlan_enabled"].CopyFrom(CustomFieldValue(
+                            boolean=True
+                        ))
+                elif interface_mode == "access" or (interface_mode == "voice" and not voice_as_tagged):
+                    matching_interface.mode = "access"
+                    matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(access_vlan_id))
+                elif interface_mode == "tagged":
+                    matching_interface.mode = interface_mode
+                    matching_interface.tagged_vlans.extend([_get_or_create_vlan(vid) for vid in interface_vlan_info.tagged_vlan_ids])
+                elif interface_mode == "tagged-all" or interface_mode == "tagged" and interface_vlan_info.native_vlan_enabled and native_vlan_id is not None:
+                    matching_interface.mode = interface_mode
+                    matching_interface.untagged_vlan.CopyFrom(_get_or_create_vlan(native_vlan_id))
 
-    # Dakota Central customization for setting a list of VLANs
-    # if any(entity.HasField("vlan") for entity in entities):
-    #     device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
-    #         multiple_objects=[
-    #             CustomFieldObjectReference(vlan=e.vlan)
-    #             for e in entities if e.HasField("vlan")
-    #         ]
-    #     ))
-    #     logger.info("Official Device: %s", MessageToDict(device))
-    
-    logger.info("Entities List: %s", MessageToDict(entities))
+        # Dakota Central customization for setting a list of VLANs
+        # if any(entity.HasField("vlan") for entity in entities):
+        #     device.custom_fields["device_global_vlans"].CopyFrom(CustomFieldValue(
+        #         multiple_objects=[
+        #             CustomFieldObjectReference(vlan=e.vlan)
+        #             for e in entities if e.HasField("vlan")
+        #         ]
+        #     ))
+        #     logger.info("Official Device: %s", MessageToDict(device))
+        
+        logger.info("Entities List: %s", MessageToDict(entities))
+    except Exception:
+        logger.error("Error caught in translate_data(): ")
                         
     return entities
