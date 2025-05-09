@@ -2,8 +2,8 @@ import logging
 
 from jnpr.junos import Device
 from napalm.junos import JunOSDriver
-from napalm.junos.utils import junos_views
 
+from device_discovery.vendor_parsers.utils import junos_views
 from device_discovery.vendor_parsers.base import VendorParser
 from device_discovery.vendor_parsers import parser_models
 
@@ -17,14 +17,15 @@ class JunOSParser(VendorParser):
     # https://github.com/napalm-automation/napalm/pull/1683
     def collect_interfaces_vlans(self, device_driver: JunOSDriver):
         interface_vlans: dict[str, parser_models.InterfaceVlans] = dict()
-        
-        device: Device = device_driver.open()
 
-        switch_style = device.facts["switch_style"]
-        switch_version = float(device.facts["version"][:4])
+        switch_style = device_driver.device.facts["switch_style"]
+        switch_version = float(device_driver.device.facts["version"][:4])
+        
+        logger.info(f"switch_style: {switch_style}")
+        logger.info(f"switch_version: {switch_version}")
 
         if switch_style == "VLAN":
-            table = junos_views.junos_iface_vlan_table(device)
+            table = junos_views.junos_iface_vlan_table(device_driver.device)
             table.get()
 
             for iface in table:
@@ -75,13 +76,13 @@ class JunOSParser(VendorParser):
         elif switch_style == "VLAN_L2NG":
             if switch_version < 20.4:
                 table = junos_views.junos_iface_vlan_table_switch_l2ng_sub20_4(
-                    device
+                    device_driver.device
                 )
             else:
-                table = junos_views.junos_iface_vlan_table_switch_l2ng(device)
+                table = junos_views.junos_iface_vlan_table_switch_l2ng(device_driver.device)
             table.get()
 
-            mode_table = junos_views.junos_iface_mode_switch_l2ng(device)
+            mode_table = junos_views.junos_iface_mode_switch_l2ng(device_driver.device)
             mode_table.get()
 
             iface_data = {}
@@ -133,7 +134,5 @@ class JunOSParser(VendorParser):
                     tagged_vlan_ids=tagged_vlans,
                     native_vlan_enabled=tagged_native_vlan
                 )
-        
-        device_driver.close()
 
         return interface_vlans
